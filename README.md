@@ -1,6 +1,39 @@
 # CarND-Controls-MPC
 Self-Driving Car Engineer Nanodegree Program
 
+A link to the car making it around the track is posted below.
+https://www.youtube.com/watch?v=twW4grUe948&feature=youtu.be
+
+
+A Model Predictive controller was succesfully able to control a car moving at high speeds safely around the simulated track. The parmaters were chosen so that the time step was .1 and the total steps was 10, so the MPC was planning 1 second into the future. Also the cost function was created so that a very high weight was given to cte and epsi making it so the car could have a reference velocity of 100mph but still be agressive about slowing down on tight corners. The max speed of the car was around 92MPH on the stright away and this could have been even increased but was lowered just for extra safety. 
+
+Here is the break down of the cost functions.
+
+double ref_cte = 0;
+double ref_epsi = 0;
+double ref_v = 100;
+
+for (int i = 0; i < N; i++) {
+      fg[0] += 2000*CppAD::pow(vars[cte_start + i] - ref_cte, 2);
+      fg[0] += 2000*CppAD::pow(vars[epsi_start + i] - ref_epsi, 2);
+      fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
+}
+
+for (int i = 0; i < N - 1; i++) {
+      fg[0] += 5*CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += 5*CppAD::pow(vars[a_start + i], 2);
+}
+
+for (int i = 0; i < N - 2; i++) {
+      fg[0] += 200*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += 10*CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
+}
+
+In order to handle the 100ms delay the intial position was first projected .1 seconds into the future and then given to the MPC to process. This technique worked well, but at higher delays than 100ms it become very difficult to control the car.
+
+The visual yellow lines being drawn in the simulator represent the fitted polynominal line between the waypoints, its the car's reference path. The green line shows each of the connected 10 steps from the MPC output trajectory.
+
+
 ---
 
 ## Dependencies
