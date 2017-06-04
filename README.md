@@ -7,29 +7,50 @@ https://www.youtube.com/watch?v=twW4grUe948&feature=youtu.be
 
 A Model Predictive controller was succesfully able to control a car moving at high speeds safely around the simulated track. The parmaters were chosen so that the time step was .1 and the total steps was 10, so the MPC was planning 1 second into the future. Also the cost function was created so that a very high weight was given to cte and epsi making it so the car could have a reference velocity of 100mph but still be agressive about slowing down on tight corners. The max speed of the car was around 92MPH on the stright away and this could have been even increased but was lowered just for extra safety. 
 
-Here is the break down of the cost functions.
+A time step of 1 second was picked just from experimentation, for example longer time frames such as 3-5 seconds would cause the car to drive off the road, because it was too much for the cost function to consider. The MPC did much better on small batches of time for getting good cost function results. Having about 10 points seemed like a decent collection size of points so thats why .1 was chosen, while anything higher might be too sparse and anything lower was not adding much value.
+
+In order to make the polynominal equations easier to fit, and also calculate estimated cte values easily, the reference frame of the car was shifted to (0,0) and its heading direction was rotated to zero degrees. The result of this shift meant that the fitted polynominal was mostly horizontal where if it was vertical it would result in extreamly high coeifficent values. Also the y evaluation values could simply be used to estimate the cte values when the polynomial was at this reference frame. 
+
+Next Here is the break down of the cost functions.
 
 double ref_cte = 0;
 double ref_epsi = 0;
 double ref_v = 100;
 
 for (int i = 0; i < N; i++) {
+
       fg[0] += 2000*CppAD::pow(vars[cte_start + i] - ref_cte, 2);
       fg[0] += 2000*CppAD::pow(vars[epsi_start + i] - ref_epsi, 2);
       fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
+      
 }
 
 for (int i = 0; i < N - 1; i++) {
+
       fg[0] += 5*CppAD::pow(vars[delta_start + i], 2);
       fg[0] += 5*CppAD::pow(vars[a_start + i], 2);
+      
 }
 
 for (int i = 0; i < N - 2; i++) {
+
       fg[0] += 200*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
       fg[0] += 10*CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
+      
 }
 
-In order to handle the 100ms delay the intial position was first projected .1 seconds into the future and then given to the MPC to process. This technique worked well, but at higher delays than 100ms it become very difficult to control the car.
+In order to handle the 100ms delay the intial position was first projected .1 seconds into the future and then given to the MPC to process. This technique was just an estimation that worked well for small amounts of delay, but at higher delays than 100ms the method was not accurate enough to control the car.
+
+Here is equations for the estmation measurments, which is a little naive but tested well for low latency.
+
+ double delay_x = v*delay_t;
+ double delay_y = 0;
+ double delay_psi = -v*steer_value / Lf * delay_t;
+ double delay_v = v + throttle_value*delay_t;
+ double delay_cte = cte + v*sin(epsi)*delay_t;
+ double delay_epsi = epsi-v*steer_value /Lf * delay_t;
+ 
+THe angle of the car was recentered at the zero reference so sin(0) is 0 making delay_y still zero and cos(0) is equal to 1 making delay_x just 0+v*delay_t. delay_psi followed the equations from the mpc update equations. delay_v is very naive since throttle is not equal to acceleration and even if it is, with units of m/s^2, a factor of 2.237 would need to be included to get v in MPH, how ever it runs very similar to wether the 2.237 factor is included or not. delay_cte and delay_epsi both use the MPC update equations.
 
 The visual yellow lines being drawn in the simulator represent the fitted polynominal line between the waypoints, its the car's reference path. The green line shows each of the connected 10 steps from the MPC output trajectory.
 
